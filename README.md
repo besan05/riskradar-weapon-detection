@@ -6,7 +6,7 @@ I designed and built this model end to end: dataset collection, cleaning and pre
 
 ## Results
 
-Validation results after 30 training epochs:
+Validation results on 2,066 held-out images (2,091 labelled weapons), after 30 training epochs:
 
 | Metric | Score |
 | --- | --- |
@@ -17,6 +17,17 @@ Validation results after 30 training epochs:
 
 ![Training curves](results/training_curves.png)
 
+### Real-world robustness test
+
+To check how the model behaves outside the validation set, I ran it on **637 external images** and manually counted the weapons in each one, then compared my counts with the model's predicted counts:
+
+| Metric | Score |
+| --- | --- |
+| Mean Absolute Error (MAE) | **0.34** weapons per image |
+| Mean Squared Error (MSE) | 0.52 |
+
+On average the predicted count is off by about one third of a weapon per image.
+
 ## How it fits into RiskRadar AI
 
 RiskRadar AI runs five detection models on a street scene: weapons, violence, fire, crowd counting and face masks. Their outputs are combined into features and passed to a machine learning classifier that labels the scene as **safe** or **potentially dangerous**. This repository contains the weapon detection part, which was my responsibility in the team.
@@ -26,19 +37,23 @@ RiskRadar AI runs five detection models on a street scene: weapons, violence, fi
 | Setting | Value |
 | --- | --- |
 | Framework | Ultralytics YOLOv8 |
+| Model | YOLOv8n (3.0M parameters, 8.2 GFLOPs) |
 | Task | Object detection, 1 class (`weapon`) |
-| Starting point | Pretrained YOLOv8 weights (transfer learning) |
+| Starting point | COCO-pretrained YOLOv8n weights (transfer learning) |
 | Image size | 640 × 640 |
 | Batch size | 16 |
-| Epochs | 30 (early stopping patience: 10) |
-| Training environment | Google Colab (GPU) |
+| Epochs | 30 of a planned 40 (early stopping patience: 10) |
+| Training environment | Google Colab, NVIDIA Tesla T4 GPU (~10 min per epoch) |
 
-The full training configuration is in [`config/args.yaml`](config/args.yaml) and the per-epoch metrics are in [`results/results.csv`](results/results.csv).
+Training stopped during epoch 31 when the Colab session ended, so the epoch-30 checkpoint is the final model. Validation metrics had already levelled off by then (see the curves above).
+
+The full training and evaluation code is in [`notebooks/weapon_detection_training.ipynb`](notebooks/weapon_detection_training.ipynb), the configuration in [`config/args.yaml`](config/args.yaml) and the per-epoch metrics in [`results/results.csv`](results/results.csv).
 
 ## Dataset
 
-- Images of handguns, rifles, shotguns and knives, including CCTV-style and real-world scenes, labelled with bounding boxes.
-- I cleaned and preprocessed the data before training. The label distribution is shown in [`results/label_distribution.jpg`](results/label_distribution.jpg).
+- **26,280 training images** and **2,066 validation images**, plus a separate test split.
+- Handguns, rifles, shotguns and knives, including CCTV-style and real-world scenes, labelled with bounding boxes. About 4,600 training images are backgrounds with no weapons, to reduce false alarms.
+- Collected, cleaned and versioned with Roboflow, then exported in YOLOv8 format. The label distribution is shown in [`results/label_distribution.jpg`](results/label_distribution.jpg).
 - The dataset itself is not included in this repository because of its size and image licensing.
 
 ## Repository structure
@@ -46,6 +61,8 @@ The full training configuration is in [`config/args.yaml`](config/args.yaml) and
 ```
 riskradar-weapon-detection/
 ├── README.md
+├── notebooks/
+│   └── weapon_detection_training.ipynb   # data download, training, evaluation
 ├── config/
 │   └── args.yaml              # training configuration
 ├── results/
@@ -72,7 +89,7 @@ results[0].show()
 
 ## Tech stack
 
-Python · Ultralytics YOLOv8 · PyTorch · OpenCV · Google Colab
+Python · Ultralytics YOLOv8 · PyTorch · OpenCV · Roboflow · pandas · scikit-learn · Google Colab
 
 ## Author
 
